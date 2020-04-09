@@ -1,13 +1,12 @@
-using System;
-using System.Collections.Generic;
+using AutoMapper;
+using JurisTempus.Data;
+using JurisTempus.ViewModels;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using JurisTempus.Data;
-using Microsoft.EntityFrameworkCore;
-using JurisTempus.ViewModels;
 
 namespace JurisTempus.Controllers
 {
@@ -15,28 +14,56 @@ namespace JurisTempus.Controllers
   {
     private readonly ILogger<HomeController> _logger;
     private readonly BillingContext _context;
+    readonly IMapper _mapper;
 
-    public HomeController(ILogger<HomeController> logger, BillingContext context)
+    public HomeController(ILogger<HomeController> logger, BillingContext context, IMapper mapper)
     {
+      _mapper = mapper;
       _logger = logger;
       _context = context;
     }
 
     public IActionResult Index()
     {
-      var result = _context.Clients.Include(c => c.Address).ToArray();
-      return View(result);
-    }
+      var result = _context.Clients
+        .Include(c => c.Address)
+        .Include(c => c.Cases)
+        .ToArray();
 
+      var vms = _mapper.Map<ClientViewModel[]>(result);
+
+      return View(vms);
+    }
     [HttpGet("editor/{id:int}")]
     public async Task<IActionResult> ClientEditor(int id)
     {
       var result = await _context.Clients
         .Include(c => c.Address)
         .Where(c => c.Id == id)
-        .FirstOrDefaultAsync();
+        .FirstOrDefaultAsync().ConfigureAwait(true);
 
-      return View(result);
+      var vms = _mapper.Map<ClientViewModel>(result);
+      return View(vms);
+    }
+
+    [HttpPost("editor/{id:int}")]
+    public async Task<IActionResult> ClientEditor(int id, ClientViewModel model)
+    {
+      // Save Changes to the Database
+      var oldclient = await _context.Clients.Where(c => c.Id == id)
+        .Include(c=>c.Address)
+        .FirstOrDefaultAsync().ConfigureAwait(true);
+      if (oldclient != null)
+      {
+        // Update the Database
+        _mapper.Map(model, oldclient); // Copy Changes
+
+        if (await _context.SaveChangesAsync().ConfigureAwait(true) > 0)
+        {
+          return RedirectToAction("Index");
+        }
+      }
+      return View();
     }
 
     [HttpGet("timesheet")]

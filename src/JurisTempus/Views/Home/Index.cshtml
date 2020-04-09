@@ -1,9 +1,26 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+  ViewData["Title"] = "Home Page";
 }
-  <div class="row">
-    <div class="col-8 offset-2">
-      <h3>Clients</h3>
-    </div>
+@model ClientViewModel[]
+<div class="row">
+  <div class="col-8 offset-2">
+    <h3>Clients</h3>
+    @foreach (var client in Model)
+    {
+      <div>@client.Name - @client.ContactName </div>
+      <div>@client.CityTown - @client.StateProvince</div>
+
+      <ul>
+        @foreach (var clientCase in client.Cases)
+        {
+          <li>@clientCase.FileNumber - @clientCase.Status</li>
+        }
+      </ul>
+      <a asp-action="ClientEditor" asp-route-id="@client.Id" class="btn btn-sm btn-primary">Edit</a>
+
+    }
+
+
   </div>
+</div>
 
